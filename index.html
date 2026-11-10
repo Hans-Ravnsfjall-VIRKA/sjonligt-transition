@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sjónligt Scroll Transition</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&display=swap">
+<style>
+/* Layout: one pinned stage, left-aligned type. A fixed sentence with one slot.
+   Four qualities pass through the slot and settle as a small list below it,
+   then the list lifts back into the slot and resolves into one word while the
+   ground goes from deep to light. Single committed look (prototype of the hero). */
+:root {
+  --deep: #013946;
+  --light: #eaf3f0;
+  --on-deep: #f3f8f6;
+  --on-light: #013946;
+  --muted-deep: #8fb3b6;
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --word: clamp(3rem, 13vw, 11rem);
+  --gutter-l: max(24px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(24px, env(safe-area-inset-right, 0px));
+}
+html { scroll-behavior: auto; }
+body {
+  background: var(--deep);
+  color: var(--on-deep);
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+.track { height: 440vh; position: relative; }
+.stage {
+  --c: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in oklab, var(--deep), var(--light) calc(var(--c) * 100%));
+  color: color-mix(in oklab, var(--on-deep), var(--on-light) calc(var(--c) * 100%));
+}
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-block: 24px;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-size: 0.875rem;
+}
+.hint { letter-spacing: 0; font-weight: 400; opacity: 0.7; }
+.copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+  padding-block: 0 12vh;
+  min-width: 0;
+}
+.lead {
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(1.25rem, 3.2vw, 2.5rem);
+  line-height: 1.2;
+  opacity: 0.8;
+}
+.slot {
+  position: relative;
+  margin: 0.08em 0 0;
+  height: 1.08em;
+  font-size: var(--word);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+.slot span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  transform-origin: left top;
+  will-change: transform, opacity, filter;
+}
+.slot .q { opacity: 0; }
+.slot .q:first-child { opacity: 1; }
+.slot .final { opacity: 0; }
+.after {
+  margin-top: clamp(20px, 3vw, 40px);
+  max-width: 34ch;
+  font-size: clamp(1.0625rem, 1.6vw, 1.375rem);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.after p { margin: 0 0 20px; }
+.after a {
+  color: inherit;
+  font-weight: 500;
+  text-underline-offset: 0.3em;
+  text-decoration-thickness: 1px;
+}
+.after a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+
+.next {
+  background: var(--light);
+  color: var(--on-light);
+  padding-block: 18vh 30vh;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+}
+.next h2 {
+  margin: 0;
+  font-weight: 500;
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.track.static { height: auto; }
+.track.static .stage { position: relative; }
+</style>
+
+</head>
+<body>
+<main>
+  <section class="track" id="track" aria-label="Ger tað, tit gera, sjónligt">
+    <div class="stage" id="stage">
+      <div class="bar">
+        <span>VIRKA</span>
+        <span class="hint" id="hint">Skrolla niður</span>
+      </div>
+      <div class="copy">
+        <p class="lead">Ger tað, tit gera,</p>
+        <p class="slot" id="slot">
+          <span class="q">Kreativt</span>
+          <span class="q">Greitt</span>
+          <span class="q">Einfalt</span>
+          <span class="q">Minniligt</span>
+          <span class="final" id="final">Sjónligt.</span>
+        </p>
+        <div class="after" id="after">
+          <p>Tit kenna tykkara fak. Vit hjálpa tykkum at vísa tað.</p>
+          <a href="https://phenomenal-chimera-da345f.netlify.app/starvsfolk">Hitt okkum her</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="next">
+    <h2>Okkara tilgongd er einføld.</h2>
+  </section>
+</main>
+
+<script>
+(function () {
+  var track = document.getElementById('track');
+  var stage = document.getElementById('stage');
+  var hint = document.getElementById('hint');
+  var finalEl = document.getElementById('final');
+  var after = document.getElementById('after');
+  var words = Array.prototype.slice.call(document.querySelectorAll('#slot .q'));
+
+  var SEG = 0.15;          // scroll share per quality
+  var OUT_AT = 0.65;       // where inside a segment the word starts to leave
+  var MERGE_FROM = 0.64;   // list lifts back into the slot
+  var MERGE_LEN = 0.2;
+  var AFTER_FROM = 0.87;
+  var AFTER_LEN = 0.1;
+
+  function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function ease(t) { return t * t * (3 - 2 * t); }
+
+  function render(p) {
+    var c = ease(clamp((p - MERGE_FROM) / MERGE_LEN));
+    var a = ease(clamp((p - AFTER_FROM) / AFTER_LEN));
+
+    words.forEach(function (el, i) {
+      var t = p / SEG - i;
+      var inn = i === 0 ? 1 : ease(clamp((t + (1 - OUT_AT)) / (1 - OUT_AT)));
+      var out = ease(clamp((t - OUT_AT) / (1 - OUT_AT)));
+      var y = -(1 - inn) * 0.45 + out * (1.14 + i * 0.4) * (1 - c);
+      var s = 1 - 0.66 * out * (1 - c);
+      var o = inn * (1 - 0.5 * out) * (1 - c);
+      var blur = (1 - inn) * 14 + c * 10;
+      el.style.transform = 'translateY(' + y.toFixed(4) + 'em) scale(' + s.toFixed(4) + ')';
+      el.style.opacity = o.toFixed(3);
+      el.style.filter = blur > 0.05 ? 'blur(' + blur.toFixed(2) + 'px)' : 'none';
+    });
+
+    var fb = (1 - c) * 18;
+    finalEl.style.opacity = c.toFixed(3);
+    finalEl.style.transform = 'scale(' + (0.96 + 0.04 * c).toFixed(4) + ')';
+    finalEl.style.filter = fb > 0.05 ? 'blur(' + fb.toFixed(2) + 'px)' : 'none';
+
+    stage.style.setProperty('--c', c.toFixed(3));
+    after.style.opacity = a.toFixed(3);
+    after.style.transform = 'translateY(' + ((1 - a) * 16).toFixed(2) + 'px)';
+    after.style.pointerEvents = a > 0.5 ? 'auto' : 'none';
+    hint.style.opacity = (0.7 * clamp(1 - p * 8)).toFixed(3);
+  }
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) {
+    track.classList.add('static');
+    render(1);
+    return;
+  }
+
+  var queued = false;
+  function update() {
+    queued = false;
+    var total = track.offsetHeight - window.innerHeight;
+    var p = total > 0 ? clamp(-track.getBoundingClientRect().top / total) : 1;
+    render(p);
+  }
+  function request() {
+    if (!queued) { queued = true; requestAnimationFrame(update); }
+  }
+  window.addEventListener('scroll', request, { passive: true });
+  window.addEventListener('resize', request);
+  update();
+})();
+</script>
+</body>
+</html>
