@@ -95,7 +95,6 @@ body {
   visibility: hidden;
   white-space: nowrap;
 }
-.measure span { display: inline-block; white-space: pre; }
 .strike {
   position: absolute;
   left: 0;
@@ -110,6 +109,7 @@ body {
   position: absolute;
   left: 0;
   top: 0;
+  transform-origin: 0.3em 0.6em;
   will-change: transform;
 }
 .piece span {
@@ -117,7 +117,6 @@ body {
   left: 0;
   top: 0;
   white-space: pre;
-  transform: translateX(-50%);
   will-change: opacity, filter;
 }
 
@@ -276,7 +275,7 @@ body {
   function measurer(chars) {
     var el = document.createElement('span');
     el.className = 'measure';
-    chars.forEach(function (ch) { el.appendChild(glyph(ch)); });
+    el.textContent = chars.join('');
     return el;
   }
 
@@ -298,7 +297,7 @@ body {
     el.appendChild(mB);
     el.appendChild(strike);
     phrase.appendChild(el);
-    return { el: el, mA: mA, mB: mB, strike: strike, pad: 0, w: 0 };
+    return { el: el, mA: mA, mB: mB, a: r.a, b: r.b, strike: strike, pad: 0, w: 0 };
   });
 
   var pieces = plan.pieces.map(function (pr, idx) {
@@ -321,20 +320,28 @@ body {
   var lastP = 0;
   var fontPx = 16;
 
-  function centres(m) {
-    var out = [], kids = m.children, k;
-    for (k = 0; k < kids.length; k++) out.push(kids[k].offsetLeft + kids[k].offsetWidth / 2);
+  // Left edge of every character as the browser really sets the word, kerning
+  // and sub-pixel positions included, so both resting states match plain text.
+  function lefts(m, chars) {
+    var out = [], node = m.firstChild, base = m.getBoundingClientRect().left;
+    var range = document.createRange(), at = 0, k;
+    for (k = 0; k < chars.length; k++) {
+      range.setStart(node, at);
+      range.setEnd(node, at + chars[k].length);
+      out.push(range.getBoundingClientRect().left - base);
+      at += chars[k].length;
+    }
     return out;
   }
 
   function measure() {
     fontPx = parseFloat(getComputedStyle(phrase).fontSize) || 16;
     var geo = lines.map(function (ln) {
-      var wA = ln.mA.offsetWidth || 1, wB = ln.mB.offsetWidth || 1;
+      var wA = ln.mA.getBoundingClientRect().width || 1, wB = ln.mB.getBoundingClientRect().width || 1;
       ln.pad = fontPx * 0.04;
       ln.w = wA + ln.pad * 2;
       ln.strike.style.width = ln.w.toFixed(2) + 'px';
-      return { cA: centres(ln.mA), cB: centres(ln.mB), wA: wA, wB: wB, top: ln.el.offsetTop };
+      return { cA: lefts(ln.mA, ln.a), cB: lefts(ln.mB, ln.b), wA: wA, wB: wB, top: ln.el.offsetTop };
     });
     pieces.forEach(function (pc) {
       var ga = pc.la >= 0 ? geo[pc.la] : null, gb = pc.lb >= 0 ? geo[pc.lb] : null;
@@ -376,7 +383,6 @@ body {
     pieces.forEach(function (pc) {
       var dx = pc.x1 - pc.x0, dy = pc.y1 - pc.y0;
       var travel = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (fontPx * 1.2));
-      if (!pc.same) travel = Math.max(travel, 0.45);
       var x = pc.x0 + dx * e;
       var y = pc.y0 + dy * e + pc.sign * swing * ARC * travel * fontPx;
       var r = pc.sign * swing * TILT * travel;
